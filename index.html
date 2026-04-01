@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dinner Planner</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f9f9f9;
+      --card-hover: #f2f2f2;
+      --accent: #C8603A;
+      --accent-light: #E8A44A;
+      --text: #1a1a1a;
+      --text-light: #666666;
+      --border: #e0e0e0;
+      --chip-bg: #f2f2f2;
+      --chip-hover: #e8e8e8;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.12);
+      --radius: 1.25rem;
+      --radius-sm: 0.75rem;
+    }
+
+    body.dark {
+      --bg: #1a1a1a;
+      --card: #242424;
+      --card-hover: #2e2e2e;
+      --text: #f0f0f0;
+      --text-light: #999999;
+      --border: #383838;
+      --chip-bg: #2e2e2e;
+      --chip-hover: #383838;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    }
+
+    /* Header */
+    header {
+      background: var(--card);
+      border-bottom: 2px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    header h1 {
+      font-family: Georgia, serif;
+      font-size: 1.5rem;
+      color: var(--accent);
+      white-space: nowrap;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 0.5rem 1.1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-danger {
+      background: var(--chip-bg);
+      color: var(--accent);
+      border: 2px solid var(--border);
+    }
+    .btn-danger:hover { background: #FDD5B8; border-color: var(--accent); }
+
+    .btn-undo {
+      background: var(--accent);
+      color: white;
+      border: 2px solid var(--accent);
+    }
+    .btn-undo:hover { opacity: 0.85; }
+
+    .btn-darkmode {
+      background: var(--chip-bg);
+      color: var(--text);
+      border: 2px solid var(--border);
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+    }
+    .btn-darkmode:hover { background: var(--chip-hover); border-color: var(--text-light); }
+
+    .reset-badge {
+      font-size: 0.78rem;
+      color: var(--text-light);
+      background: var(--chip-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 2rem;
+      padding: 0.35rem 0.85rem;
+      white-space: nowrap;
+    }
+    .reset-badge.urgent {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: #FDD5B8;
+    }
+    body.dark .reset-badge.urgent { background: rgba(200,96,58,0.15); }
+
+/* Main layout */
+    main {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.5rem 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      align-items: flex-start;
+    }
+
+    /* Day grid */
+    .days-grid {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      min-width: 0;
+    }
+
+    .week-section {}
+
+    .week-header {
+      font-family: Georgia, serif;
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--border);
+      letter-spacing: 0.03em;
+    }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1rem;
+    }
+
+    /* Day card */
+    .day-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      min-height: 280px;
+    }
+
+    .day-card.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(200, 96, 58, 0.15), var(--shadow-lg);
+    }
+
+    .day-card.selecting {
+      border-color: var(--accent-light);
+      box-shadow: 0 0 0 3px rgba(232, 164, 74, 0.2), var(--shadow-lg);
+      cursor: pointer;
+    }
+
+    .day-name {
+      font-family: Georgia, serif;
+      font-weight: bold;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Meal slot */
+    .meal-slot {
+      flex: 1;
+      border-radius: var(--radius-sm);
+      border: 2px dashed var(--border);
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: border-color 0.15s, background 0.15s;
+      background: rgba(255,255,255,0.4);
+    }
+
+    .meal-slot.has-meal {
+      border-style: solid;
+      border-color: var(--border);
+      background: var(--chip-bg);
+    }
+
+    .meal-slot .placeholder {
+      color: var(--text-light);
+      font-size: 0.8rem;
+      opacity: 0.7;
+      text-align: center;
+      padding: 0.5rem;
+      pointer-events: none;
+    }
+
+    .meal-assigned {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      gap: 0.4rem;
+    }
+
+    .meal-assigned-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      flex: 1;
+    }
+
+    .remove-meal-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-light);
+      font-size: 1rem;
+      padding: 0.5rem;
+      line-height: 1;
+      opacity: 0.6;
+      transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .remove-meal-btn:hover { opacity: 1; color: var(--accent); }
+
+    /* Grocery List */
+    .notes-toggle {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 0;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-height: 44px;
+      transition: color 0.15s;
+    }
+    .notes-toggle:hover { color: var(--accent); }
+
+    .notes-area { display: none; }
+    .notes-area.open { display: block; }
+
+    .notes-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 0.5rem;
+      background: rgba(230,255,240,0.5);
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0.45rem 0.6rem;
+      resize: vertical;
+      min-height: 120px;
+      font-family: system-ui;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .notes-input:focus { border-color: #4a9e6b; }
+    body.dark .notes-input { background: rgba(74,158,107,0.12); }
+    .notes-input::placeholder { color: var(--text-light); opacity: 0.6; }
+
+    /* Have section */
+    .have-toggle {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 0;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-height: 44px;
+      transition: color 0.15s;
+    }
+    .have-toggle:hover { color: #4a9e6b; }
+
+    .have-area { display: none; }
+    .have-area.open { display: block; }
+
+    .have-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 0.5rem;
+      background: rgba(230,255,240,0.5);
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0.45rem 0.6rem;
+      resize: vertical;
+      min-height: 120px;
+      font-family: system-ui;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .have-input:focus { border-color: #4a9e6b; }
+    .have-input::placeholder { color: var(--text-light); opacity: 0.6; }
+    body.dark .have-input { background: rgba(74,158,107,0.12); }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.2rem 1rem;
+      position: sticky;
+      top: 80px;
+    }
+
+    .sidebar h2 {
+      font-family: Georgia, serif;
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .meals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .meal-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--chip-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 2rem;
+      padding: 0.42rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: grab;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s, transform 0.1s;
+      user-select: none;
+      gap: 0.4rem;
+      min-height: 44px;
+    }
+    .meal-chip:hover { background: var(--chip-hover); border-color: var(--accent-light); }
+    .meal-chip.dragging { opacity: 0.45; transform: scale(0.97); }
+    .meal-chip.selecting-active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .meal-chip-name { flex: 1; }
+
+    /* Add meal */
+    .add-meal-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .add-meal-input {
+      flex: 1;
+      min-width: 0;
+      border: 1.5px solid var(--border);
+      border-radius: 2rem;
+      padding: 0.42rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: rgba(255,255,255,0.7);
+      outline: none;
+      font-family: system-ui;
+      display: none;
+      transition: border-color 0.15s;
+    }
+    .add-meal-input.open { display: block; }
+    .add-meal-input:focus { border-color: var(--accent-light); }
+
+    .btn-add {
+      background: var(--chip-bg);
+      border: 1.5px dashed var(--border);
+      color: var(--text-light);
+      border-radius: 2rem;
+      padding: 0.42rem 0.85rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    .btn-add:hover { background: var(--chip-hover); border-color: var(--accent); color: var(--accent); }
+
+    .btn-save-meal {
+      background: var(--accent);
+      border: none;
+      color: white;
+      border-radius: 2rem;
+      padding: 0.42rem 0.85rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: none;
+      font-weight: 600;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .btn-save-meal.open { display: block; }
+    .btn-save-meal:hover { opacity: 0.85; }
+
+    /* Select-to-assign notice */
+    .select-notice {
+      position: fixed;
+      bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--accent);
+      color: white;
+      padding: 0.65rem 1.5rem;
+      border-radius: 2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+      z-index: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+    .select-notice.visible { transform: translateX(-50%) translateY(0); }
+
+    /* Login screen */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #login-screen.hidden { display: none; }
+
+    .login-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .login-title {
+      font-family: Georgia, serif;
+      font-size: 1.3rem;
+      color: var(--accent);
+      text-align: center;
+    }
+
+    .login-input {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      font-family: system-ui;
+      transition: border-color 0.15s;
+    }
+    .login-input:focus { border-color: var(--accent); }
+
+    .btn-login {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.65rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-login:hover { opacity: 0.85; }
+    .btn-login:active { transform: scale(0.97); }
+
+    .login-error {
+      color: #c0392b;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+
+    .btn-logout {
+      background: var(--chip-bg);
+      color: var(--text-light);
+      border: 2px solid var(--border);
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
+    }
+    .btn-logout:hover { background: var(--chip-hover); border-color: var(--text-light); }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .week-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      main { flex-direction: column; padding: 1rem; }
+      .sidebar { width: 100%; position: static; order: -1; }
+      .meals-list {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.5rem;
+        scrollbar-width: none;
+      }
+      .meals-list::-webkit-scrollbar { display: none; }
+      .meal-chip { flex-shrink: 0; }
+      .week-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .mobile-meal-picker { display: none; }
+
+    @media (max-width: 600px) {
+      .week-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+      header {
+        flex-direction: column;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        gap: 0.4rem;
+      }
+      header h1 {
+        position: static;
+        transform: none;
+        font-size: 1.1rem;
+        pointer-events: auto;
+        order: -1;
+        white-space: normal;
+        text-align: center;
+      }
+      .header-actions { gap: 0.5rem; }
+      .reset-badge { order: 1; }
+      main { padding: 0.75rem; }
+      .day-card { min-height: auto; padding: 0.6rem; gap: 0.4rem; }
+      .week-grid { gap: 0.5rem; }
+      .days-grid { gap: 1rem; }
+      .meal-slot { min-height: 50px; }
+      .week-header { font-size: 0.85rem; margin-bottom: 0.4rem; }
+      .have-toggle, .notes-toggle { min-height: 36px; }
+      .day-name { font-size: 0.72rem; }
+      .meal-assigned-name { font-size: 0.8rem; }
+      .meals-list { display: none; }
+      .mobile-meal-picker {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .mobile-meal-select {
+        width: 100%;
+        padding: 0.65rem 0.85rem;
+        font-size: 1rem;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--chip-bg);
+        color: var(--text);
+        outline: none;
+        appearance: auto;
+        font-family: system-ui;
+      }
+      .btn-assign-mobile {
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 0.65rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 44px;
+        transition: opacity 0.15s;
+      }
+      .btn-assign-mobile:hover { opacity: 0.85; }
+      .btn-assign-mobile:active { transform: scale(0.97); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">Dinner Planner</div>
+    <input type="text" class="login-input" id="loginUser" placeholder="Username" autocomplete="username" spellcheck="false">
+    <input type="password" class="login-input" id="loginPass" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn-login" id="loginBtn">Sign In</button>
+    <span class="login-error" id="loginError">Incorrect username or password</span>
+  </div>
+</div>
+
+<header>
+  <h1>Dinner Planner</h1>
+  <div class="header-actions">
+    <button class="btn btn-logout" id="logoutBtn">Logout</button>
+    <button class="btn btn-darkmode" id="darkModeBtn" title="Toggle dark mode">🌙</button>
+    <button class="btn btn-danger" id="clearWeekBtn">Clear All</button>
+    <button class="btn btn-undo" id="undoClearBtn" style="display:none">↩ Undo</button>
+  </div>
+  <div class="reset-badge" id="resetBadge"></div>
+</header>
+
+<main>
+  <div class="days-grid" id="daysGrid"></div>
+
+  <div class="sidebar">
+    <h2>Our Meals</h2>
+    <div class="meals-list" id="mealsList"></div>
+    <div class="mobile-meal-picker">
+      <select id="mobileMealSelect" class="mobile-meal-select"></select>
+      <button class="btn-assign-mobile" id="mobileAssignBtn">Assign to a day ▸</button>
+    </div>
+    <div class="add-meal-row">
+      <input type="text" class="add-meal-input" id="addMealInput" placeholder="Meal name..." maxlength="50">
+      <button class="btn-save-meal" id="saveMealBtn">Add</button>
+      <button class="btn-add" id="addMealBtn">+ Add</button>
+    </div>
+  </div>
+</main>
+
+<div class="select-notice" id="selectNotice">
+  Click a day to assign — or press Esc to cancel
+</div>
+
+<script>
+  // ── Auth ──────────────────────────────────────────────────────────────────────
+  const AUTH_HASHES = {
+    user: 'a97cd162ea28b97f16f4400e74b0412b41483560985aa02577ca3d0dff2588b2',
+    pass: 'df21a40f7a118eccfafdef5d64fd5da2a07d332e00d5d74abcff53bcd1276a4d'
+  };
+  const SESSION_KEY = 'dinner-planner-auth';
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function showApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    loadState();
+    render();
+  }
+
+  function showLogin() {
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('loginUser').focus();
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', attemptLogin);
+  document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+  document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+
+  async function attemptLogin() {
+    const userHash = await sha256(document.getElementById('loginUser').value.trim());
+    const passHash = await sha256(document.getElementById('loginPass').value);
+    const err = document.getElementById('loginError');
+    if (userHash === AUTH_HASHES.user && passHash === AUTH_HASHES.pass) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      err.classList.remove('visible');
+      showApp();
+    } else {
+      err.classList.add('visible');
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginPass').focus();
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem(SESSION_KEY);
+    location.reload();
+  });
+
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DEFAULT_MEALS = [
+    'Ribeye Steak', 'Chicken Bowl', 'Beef Bowl', 'Chicken Katsu Bowl',
+    'Chicken Parmigiana', 'Lettuce Wraps', 'Girl Dinner', 'Rice Paper Rolls',
+    'Meatball Bowl', 'Whatever is in the Fridge'
+  ];
+
+  // ── Date helpers ──────────────────────────────────────────────────────────────
+  const BLOCK_EPOCH = new Date('2026-03-30T00:00:00'); // first Monday of block 1
+
+  function getFortnightDays() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSinceEpoch = Math.floor((today - BLOCK_EPOCH) / 86400000);
+    const blockIndex = daysSinceEpoch < 0 ? 0 : Math.floor(daysSinceEpoch / 14);
+    const blockStart = new Date(BLOCK_EPOCH);
+    blockStart.setDate(BLOCK_EPOCH.getDate() + blockIndex * 14);
+    const days = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(blockStart);
+      d.setDate(blockStart.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }
+
+  function getDaysUntilReset() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSinceEpoch = Math.floor((today - BLOCK_EPOCH) / 86400000);
+    if (daysSinceEpoch < 0) return 14 - daysSinceEpoch;
+    return 14 - (daysSinceEpoch % 14);
+  }
+
+  function dateKey(d) {
+    return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  }
+
+  function formatDayLabel(d) {
+    return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+  }
+
+  function formatWeekLabel(days) {
+    const s = days[0], e = days[6];
+    const sStr = `${MONTH_NAMES[s.getMonth()]} ${s.getDate()}`;
+    const eStr = `${MONTH_NAMES[e.getMonth()]} ${e.getDate()}`;
+    return `${sStr} – ${eStr}`;
+  }
+
+  const FORTNIGHT = getFortnightDays();
+  const ALL_KEYS = FORTNIGHT.map(dateKey);
+
+  let state = {
+    meals: [...DEFAULT_MEALS],
+    week: Object.fromEntries(ALL_KEYS.map(k => [k, { meal: '', notes: '', have: '' }]))
+  };
+
+  let selectingMeal = null;
+  let saveTimer = null;
+
+  // ── Persistence ──────────────────────────────────────────────────────────────
+  function loadState() {
+    try {
+      const saved = localStorage.getItem('dinner-planner-v2');
+      if (!saved) return;
+      const p = JSON.parse(saved);
+      if (Array.isArray(p.meals)) state.meals = p.meals;
+      if (p.week) ALL_KEYS.forEach(k => {
+        if (p.week[k]) state.week[k] = { meal: p.week[k].meal || '', notes: p.week[k].notes || '', have: p.week[k].have || '' };
+      });
+    } catch(e) {}
+  }
+
+  function saveState(clearUndo = true) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => localStorage.setItem('dinner-planner-v2', JSON.stringify(state)), 300);
+    if (clearUndo) {
+      clearedSnapshot = null;
+      const btn = document.getElementById('undoClearBtn');
+      if (btn) btn.style.display = 'none';
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  function render() { renderDays(); renderMeals(); }
+
+  function renderDays() {
+    const container = document.getElementById('daysGrid');
+    container.innerHTML = '';
+
+    const weeks = [FORTNIGHT.slice(0, 7), FORTNIGHT.slice(7, 14)];
+
+    weeks.forEach((weekDays, wi) => {
+      const section = document.createElement('div');
+      section.className = 'week-section';
+
+      const header = document.createElement('div');
+      header.className = 'week-header';
+      header.textContent = `Week ${wi + 1}  ·  ${formatWeekLabel(weekDays)}`;
+      section.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'week-grid';
+
+      weekDays.forEach(dayDate => {
+        const key = dateKey(dayDate);
+        const { meal, notes, have } = state.week[key];
+        const card = document.createElement('div');
+        card.className = 'day-card' + (selectingMeal ? ' selecting' : '');
+        card.dataset.day = key;
+
+        card.innerHTML = `
+          <div class="day-name">${formatDayLabel(dayDate)}</div>
+          <div class="meal-slot${meal ? ' has-meal' : ''}" data-day="${key}">
+            ${meal
+              ? `<div class="meal-assigned">
+                   <span class="meal-assigned-name">${esc(meal)}</span>
+                   <button class="remove-meal-btn" data-day="${key}" title="Remove">✕</button>
+                 </div>`
+              : `<span class="placeholder">Drop a meal here</span>`}
+          </div>
+          <button class="have-toggle" data-day="${key}">
+            ${have ? '▾' : '▸'} What We Have${have ? ' ✎' : ''}
+          </button>
+          <div class="have-area${have ? ' open' : ''}">
+            <textarea class="have-input" data-day="${key}" placeholder="• garlic&#10;• olive oil&#10;• rice" rows="5" autocomplete="on">${esc(have)}</textarea>
+          </div>
+          <button class="notes-toggle" data-day="${key}">
+            ${notes ? '▾' : '▸'} Grocery List${notes ? ' ✎' : ''}
+          </button>
+          <div class="notes-area${notes ? ' open' : ''}">
+            <textarea class="notes-input" data-day="${key}" placeholder="• salmon&#10;• olive oil" rows="5" autocomplete="on">${esc(notes)}</textarea>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+
+    // Drop zones
+    container.querySelectorAll('.meal-slot').forEach(slot => {
+      slot.addEventListener('dragover', e => { e.preventDefault(); slot.closest('.day-card').classList.add('drag-over'); });
+      slot.addEventListener('dragleave', () => slot.closest('.day-card').classList.remove('drag-over'));
+      slot.addEventListener('drop', e => {
+        e.preventDefault();
+        slot.closest('.day-card').classList.remove('drag-over');
+        assignMeal(slot.dataset.day, e.dataTransfer.getData('text/plain'));
+      });
+    });
+
+    // Day card click (select-to-assign mode)
+    container.querySelectorAll('.day-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (!selectingMeal) return;
+        if (e.target.closest('.remove-meal-btn, .notes-toggle, .notes-input, .have-toggle, .have-input')) return;
+        assignMeal(card.dataset.day, selectingMeal);
+        cancelSelectMode();
+      });
+    });
+
+    // Remove meal
+    container.querySelectorAll('.remove-meal-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        state.week[btn.dataset.day].meal = '';
+        saveState(); render();
+      });
+    });
+
+    // Have toggle
+    container.querySelectorAll('.have-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const area = btn.nextElementSibling;
+        area.classList.toggle('open');
+        const open = area.classList.contains('open');
+        const key = btn.dataset.day;
+        btn.textContent = (open ? '▾' : '▸') + ' What We Have' + (state.week[key].have ? ' ✎' : '');
+      });
+    });
+
+    // Have input
+    container.querySelectorAll('.have-input').forEach(input => {
+      setupBulletInput(input);
+      input.addEventListener('input', () => {
+        const key = input.dataset.day;
+        state.week[key].have = input.value;
+        const toggle = input.closest('.day-card').querySelector('.have-toggle');
+        const open = input.closest('.have-area').classList.contains('open');
+        toggle.textContent = (open ? '▾' : '▸') + ' What We Have' + (state.week[key].have ? ' ✎' : '');
+        saveState();
+      });
+    });
+
+    // Notes toggle
+    container.querySelectorAll('.notes-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const area = btn.nextElementSibling;
+        area.classList.toggle('open');
+        const open = area.classList.contains('open');
+        const key = btn.dataset.day;
+        btn.textContent = (open ? '▾' : '▸') + ' Grocery List' + (state.week[key].notes ? ' ✎' : '');
+      });
+    });
+
+    // Notes input
+    container.querySelectorAll('.notes-input').forEach(input => {
+      setupBulletInput(input);
+      input.addEventListener('input', () => {
+        const key = input.dataset.day;
+        state.week[key].notes = input.value;
+        const toggle = input.closest('.day-card').querySelector('.notes-toggle');
+        const open = input.closest('.notes-area').classList.contains('open');
+        toggle.textContent = (open ? '▾' : '▸') + ' Grocery List' + (state.week[key].notes ? ' ✎' : '');
+        saveState();
+      });
+    });
+  }
+
+  function renderMeals() {
+    const list = document.getElementById('mealsList');
+    list.innerHTML = '';
+    state.meals.forEach(meal => {
+      const chip = document.createElement('div');
+      chip.className = 'meal-chip' + (meal === selectingMeal ? ' selecting-active' : '');
+      chip.draggable = true;
+      chip.dataset.meal = meal;
+      chip.innerHTML = `<span class="meal-chip-name">${esc(meal)}</span>`;
+
+      chip.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', meal); chip.classList.add('dragging'); });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+
+      chip.addEventListener('click', () => {
+        if (selectingMeal === meal) { cancelSelectMode(); return; }
+        selectingMeal = meal;
+        showSelectNotice();
+        renderMeals();
+        document.querySelectorAll('.day-card').forEach(c => c.classList.add('selecting'));
+      });
+
+      list.appendChild(chip);
+    });
+
+    // Sync mobile dropdown
+    const mobileSelect = document.getElementById('mobileMealSelect');
+    if (mobileSelect) {
+      const current = mobileSelect.value;
+      mobileSelect.innerHTML = state.meals
+        .map(m => `<option value="${esc(m)}"${m === current ? ' selected' : ''}>${esc(m)}</option>`)
+        .join('');
+    }
+  }
+
+  document.getElementById('mobileAssignBtn').addEventListener('click', () => {
+    const meal = document.getElementById('mobileMealSelect').value;
+    if (!meal) return;
+    selectingMeal = meal;
+    showSelectNotice();
+    renderMeals();
+    document.querySelectorAll('.day-card').forEach(c => c.classList.add('selecting'));
+  });
+
+  // ── Assign ───────────────────────────────────────────────────────────────────
+  function assignMeal(key, meal) {
+    state.week[key].meal = meal;
+    saveState(); render();
+  }
+
+  // ── Select mode ──────────────────────────────────────────────────────────────
+  function showSelectNotice() { document.getElementById('selectNotice').classList.add('visible'); }
+  function hideSelectNotice() { document.getElementById('selectNotice').classList.remove('visible'); }
+
+  function cancelSelectMode() {
+    selectingMeal = null;
+    hideSelectNotice();
+    renderMeals();
+    document.querySelectorAll('.day-card').forEach(c => c.classList.remove('selecting'));
+  }
+
+  document.getElementById('selectNotice').addEventListener('click', cancelSelectMode);
+  if ('ontouchstart' in window) {
+    document.getElementById('selectNotice').textContent = 'Tap a day to assign — or tap here to cancel';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && selectingMeal) cancelSelectMode(); });
+
+  // ── Clear All ────────────────────────────────────────────────────────────────
+  let clearedSnapshot = null;
+  const undoClearBtn = document.getElementById('undoClearBtn');
+
+  document.getElementById('clearWeekBtn').addEventListener('click', () => {
+    clearedSnapshot = JSON.parse(JSON.stringify(state.week));
+    ALL_KEYS.forEach(k => { state.week[k] = { meal: '', notes: '', have: '' }; });
+    saveState(false); render();
+    undoClearBtn.style.display = '';
+  });
+
+  undoClearBtn.addEventListener('click', () => {
+    if (!clearedSnapshot) return;
+    state.week = clearedSnapshot;
+    clearedSnapshot = null;
+    saveState(); render();
+    undoClearBtn.style.display = 'none';
+  });
+
+  // ── Add Meal ─────────────────────────────────────────────────────────────────
+  const addMealBtn = document.getElementById('addMealBtn');
+  const addMealInput = document.getElementById('addMealInput');
+  const saveMealBtn = document.getElementById('saveMealBtn');
+
+  addMealBtn.addEventListener('click', () => {
+    addMealInput.classList.add('open');
+    saveMealBtn.classList.add('open');
+    addMealBtn.style.display = 'none';
+    addMealInput.focus();
+  });
+
+  function commitNewMeal() {
+    const name = addMealInput.value.trim();
+    if (name && !state.meals.includes(name)) { state.meals.push(name); saveState(); renderMeals(); }
+    addMealInput.value = '';
+    addMealInput.classList.remove('open');
+    saveMealBtn.classList.remove('open');
+    addMealBtn.style.display = '';
+  }
+
+  saveMealBtn.addEventListener('click', commitNewMeal);
+  addMealInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commitNewMeal();
+    if (e.key === 'Escape') {
+      addMealInput.value = '';
+      addMealInput.classList.remove('open');
+      saveMealBtn.classList.remove('open');
+      addMealBtn.style.display = '';
+    }
+  });
+
+  // ── Utils ────────────────────────────────────────────────────────────────────
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setupBulletInput(input) {
+    // Auto-capitalize first letter after each bullet
+    input.addEventListener('input', () => {
+      const pos = input.selectionStart;
+      const lines = input.value.split('\n');
+      const fixed = lines.map(line => {
+        if (line.startsWith('• ') && line.length > 2) {
+          return '• ' + line[2].toUpperCase() + line.slice(3);
+        }
+        return line;
+      });
+      const newVal = fixed.join('\n');
+      if (newVal !== input.value) {
+        input.value = newVal;
+        input.selectionStart = input.selectionEnd = pos;
+      }
+    });
+
+    // Start with a bullet when the field is focused and empty
+    input.addEventListener('focus', () => {
+      if (!input.value.trim()) {
+        input.value = '• ';
+        input.dispatchEvent(new Event('input'));
+      }
+    });
+    // On Enter, insert a new bullet on the next line
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const val = input.value;
+        input.value = val.slice(0, start) + '\n• ' + val.slice(end);
+        input.selectionStart = input.selectionEnd = start + 3;
+        input.dispatchEvent(new Event('input'));
+      }
+      // On an empty bullet line, Backspace deletes the whole line
+      if (e.key === 'Backspace') {
+        const pos = input.selectionStart;
+        const val = input.value;
+        if (input.selectionStart === input.selectionEnd) {
+          const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+          const lineEnd = val.indexOf('\n', pos);
+          const restOfLine = lineEnd === -1 ? val.slice(pos) : val.slice(pos, lineEnd);
+          if (pos === lineStart + 2 && val.slice(lineStart, lineStart + 2) === '• ' && restOfLine === '') {
+            e.preventDefault();
+            if (lineStart === 0) {
+              input.value = val.slice(pos);
+              input.selectionStart = input.selectionEnd = 0;
+            } else {
+              input.value = val.slice(0, lineStart - 1) + val.slice(pos);
+              input.selectionStart = input.selectionEnd = lineStart - 1;
+            }
+            input.dispatchEvent(new Event('input'));
+          }
+        }
+      }
+    });
+  }
+
+  // ── Dark Mode ─────────────────────────────────────────────────────────────────
+  const darkModeBtn = document.getElementById('darkModeBtn');
+  if (localStorage.getItem('dinner-planner-dark') === '1') {
+    document.body.classList.add('dark');
+    darkModeBtn.textContent = '☀️';
+  }
+  darkModeBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark');
+    darkModeBtn.textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('dinner-planner-dark', isDark ? '1' : '0');
+  });
+
+  // ── Reset badge ───────────────────────────────────────────────────────────────
+  const resetBadge = document.getElementById('resetBadge');
+  const daysLeft = getDaysUntilReset();
+  if (daysLeft === 1) {
+    resetBadge.textContent = 'Resets tomorrow';
+    resetBadge.classList.add('urgent');
+  } else if (daysLeft <= 3) {
+    resetBadge.textContent = `Resets in ${daysLeft} days`;
+    resetBadge.classList.add('urgent');
+  } else {
+    resetBadge.textContent = `Resets in ${daysLeft} days`;
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    showApp();
+  } else {
+    showLogin();
+  }
+</script>
+</body>
+</html>
