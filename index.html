@@ -626,6 +626,8 @@
       .btn-assign-mobile:active { transform: scale(0.97); }
     }
   </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -673,6 +675,20 @@
 </div>
 
 <script>
+  // ── Firebase ────────────────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3u3pohGEh6TXdNpZXMWOeqalFyIWWpgM",
+    authDomain: "dinner-planner-b8f88.firebaseapp.com",
+    databaseURL: "https://dinner-planner-b8f88-default-rtdb.firebaseio.com",
+    projectId: "dinner-planner-b8f88",
+    storageBucket: "dinner-planner-b8f88.firebasestorage.app",
+    messagingSenderId: "782687556450",
+    appId: "1:782687556450:web:24b96842d27c4b25b9123b"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const dbRef = db.ref('dinnerPlanner');
+
   // ── Auth ──────────────────────────────────────────────────────────────────────
   const AUTH_HASHES = {
     user: 'a97cd162ea28b97f16f4400e74b0412b41483560985aa02577ca3d0dff2588b2',
@@ -687,8 +703,16 @@
 
   function showApp() {
     document.getElementById('login-screen').classList.add('hidden');
-    loadState();
-    render();
+    // One-time migration: push existing localStorage data to Firebase if Firebase is empty
+    dbRef.once('value', (snapshot) => {
+      if (!snapshot.val()) {
+        const saved = localStorage.getItem('dinner-planner-v2');
+        if (saved) {
+          try { dbRef.set(JSON.parse(saved)); } catch(e) {}
+        }
+      }
+      loadState();
+    });
   }
 
   function showLogin() {
@@ -781,22 +805,47 @@
   let selectingMeal = null;
   let saveTimer = null;
 
-  // ── Persistence ──────────────────────────────────────────────────────────────
+  // ── Persistence (Firebase) ───────────────────────────────────────────────────
+  let firebaseListenerAttached = false;
+
   function loadState() {
-    try {
-      const saved = localStorage.getItem('dinner-planner-v2');
-      if (!saved) return;
-      const p = JSON.parse(saved);
+    if (firebaseListenerAttached) return;
+    firebaseListenerAttached = true;
+
+    dbRef.on('value', (snapshot) => {
+      const p = snapshot.val();
+      if (!p) return;
+
+      // Detect which textarea is focused so we don't clobber active editing
+      const focused = document.activeElement;
+      const focusedDay = focused && focused.dataset ? focused.dataset.day : null;
+      const focusedType = focused && focused.classList
+        ? (focused.classList.contains('notes-input') ? 'notes'
+         : focused.classList.contains('have-input') ? 'have' : null)
+        : null;
+
       if (Array.isArray(p.meals)) state.meals = p.meals;
       if (p.week) ALL_KEYS.forEach(k => {
-        if (p.week[k]) state.week[k] = { meal: p.week[k].meal || '', notes: p.week[k].notes || '', have: p.week[k].have || '' };
+        if (p.week[k]) {
+          if (focusedDay === k && focusedType === 'notes') {
+            state.week[k].meal = p.week[k].meal || '';
+            state.week[k].have = p.week[k].have || '';
+          } else if (focusedDay === k && focusedType === 'have') {
+            state.week[k].meal = p.week[k].meal || '';
+            state.week[k].notes = p.week[k].notes || '';
+          } else {
+            state.week[k] = { meal: p.week[k].meal || '', notes: p.week[k].notes || '', have: p.week[k].have || '' };
+          }
+        }
       });
-    } catch(e) {}
+
+      render();
+    });
   }
 
   function saveState(clearUndo = true) {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => localStorage.setItem('dinner-planner-v2', JSON.stringify(state)), 300);
+    saveTimer = setTimeout(() => dbRef.set(state), 300);
     if (clearUndo) {
       clearedSnapshot = null;
       const btn = document.getElementById('undoClearBtn');
@@ -808,6 +857,16 @@
   function render() { renderDays(); renderMeals(); }
 
   function renderDays() {
+    // Save focused textarea state before re-render
+    const focused = document.activeElement;
+    const savedFocusDay = focused && focused.dataset ? focused.dataset.day : null;
+    const savedFocusClass = focused && focused.classList
+      ? (focused.classList.contains('notes-input') ? 'notes-input'
+       : focused.classList.contains('have-input') ? 'have-input' : null)
+      : null;
+    const savedSelStart = focused ? focused.selectionStart : null;
+    const savedSelEnd = focused ? focused.selectionEnd : null;
+
     const container = document.getElementById('daysGrid');
     container.innerHTML = '';
 
@@ -939,6 +998,18 @@
         saveState();
       });
     });
+
+    // Restore focus and cursor position after re-render
+    if (savedFocusDay && savedFocusClass) {
+      const el = container.querySelector(`.${savedFocusClass}[data-day="${savedFocusDay}"]`);
+      if (el) {
+        el.focus();
+        if (savedSelStart !== null) {
+          el.selectionStart = savedSelStart;
+          el.selectionEnd = savedSelEnd;
+        }
+      }
+    }
   }
 
   function renderMeals() {
