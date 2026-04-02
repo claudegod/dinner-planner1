@@ -245,6 +245,9 @@
       color: var(--text);
       line-height: 1.3;
       flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .remove-meal-btn {
@@ -581,16 +584,26 @@
         text-align: center;
       }
       .header-actions { gap: 0.5rem; }
+      .btn { min-height: 44px; padding: 0.6rem 1.2rem; }
       .reset-badge { order: 1; }
       main { padding: 0.75rem; }
-      .day-card { min-height: auto; padding: 0.6rem; gap: 0.4rem; }
-      .week-grid { gap: 0.5rem; }
+      .day-card { min-height: auto; padding: 0.85rem; gap: 0.6rem; }
+      .week-grid { gap: 0.75rem; }
       .days-grid { gap: 1rem; }
-      .meal-slot { min-height: 50px; }
+      .meal-slot { min-height: 56px; }
       .week-header { font-size: 0.85rem; margin-bottom: 0.4rem; }
-      .have-toggle, .notes-toggle { min-height: 36px; }
-      .day-name { font-size: 0.72rem; }
+      .have-toggle, .notes-toggle { min-height: 44px; }
+      .day-name { font-size: 0.82rem; }
       .meal-assigned-name { font-size: 0.8rem; }
+      .remove-meal-btn {
+        padding: 0.65rem;
+        font-size: 1.15rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       .meals-list { display: none; }
       .mobile-meal-picker {
         display: flex;
@@ -609,6 +622,7 @@
         outline: none;
         appearance: auto;
         font-family: system-ui;
+        min-height: 44px;
       }
       .btn-assign-mobile {
         background: var(--accent);
@@ -624,6 +638,9 @@
       }
       .btn-assign-mobile:hover { opacity: 0.85; }
       .btn-assign-mobile:active { transform: scale(0.97); }
+      .add-meal-row { flex-direction: column; }
+      .add-meal-input.open { width: 100%; font-size: 1rem; min-height: 44px; }
+      .btn-add, .btn-save-meal { min-height: 44px; font-size: 0.95rem; }
     }
   </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
