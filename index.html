@@ -43,6 +43,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       padding-bottom: max(2rem, env(safe-area-inset-bottom));
+      overflow-x: hidden;
     }
 
     /* Header */
@@ -589,7 +590,7 @@
       main { padding: 0.75rem; }
       .day-card { min-height: auto; padding: 0.85rem; gap: 0.6rem; }
       .week-grid { gap: 0.75rem; }
-      .days-grid { gap: 1rem; }
+      .days-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
       .meal-slot { min-height: 56px; }
       .week-header { font-size: 0.85rem; margin-bottom: 0.4rem; }
       .have-toggle, .notes-toggle { min-height: 44px; }
@@ -624,20 +625,6 @@
         font-family: system-ui;
         min-height: 44px;
       }
-      .btn-assign-mobile {
-        background: var(--accent);
-        color: white;
-        border: none;
-        border-radius: var(--radius-sm);
-        padding: 0.65rem;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        min-height: 44px;
-        transition: opacity 0.15s;
-      }
-      .btn-assign-mobile:hover { opacity: 0.85; }
-      .btn-assign-mobile:active { transform: scale(0.97); }
       .add-meal-row { flex-direction: column; }
       .add-meal-input.open { width: 100%; font-size: 1rem; min-height: 44px; }
       .btn-add, .btn-save-meal { min-height: 44px; font-size: 0.95rem; }
@@ -677,7 +664,6 @@
     <div class="meals-list" id="mealsList"></div>
     <div class="mobile-meal-picker">
       <select id="mobileMealSelect" class="mobile-meal-select"></select>
-      <button class="btn-assign-mobile" id="mobileAssignBtn">Assign to a day ▸</button>
     </div>
     <div class="add-meal-row">
       <input type="text" class="add-meal-input" id="addMealInput" placeholder="Meal name..." maxlength="50">
@@ -1063,7 +1049,7 @@
     }
   }
 
-  document.getElementById('mobileAssignBtn').addEventListener('click', () => {
+  document.getElementById('mobileMealSelect').addEventListener('change', () => {
     const meal = document.getElementById('mobileMealSelect').value;
     if (!meal) return;
     selectingMeal = meal;
